@@ -1,0 +1,3 @@
+# Build outputs of nix build / nixos-rebuild build
+result
+result-*

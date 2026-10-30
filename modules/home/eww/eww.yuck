@@ -1,0 +1,206 @@
+(defvar reveal_network false)
+(defvar reveal_info false)
+(defvar reveal_settings false)
+(defvar reveal_audio false)
+(defvar osd_label "vol")
+(defvar osd_value 0)
+(defvar night_temp_live "")
+
+(deflisten workspaces :initial "[]" "eww-workspaces")
+(deflisten window_title :initial "" "eww-window-title")
+(deflisten volume :initial "{\"volume\": 0, \"muted\": false, \"mic\": 0, \"mic_muted\": false}" "eww-volume")
+(defpoll battery :interval "2s" :initial "{}" "eww-battery")
+(defpoll sysinfo :interval "2s" :initial "{}" "eww-sysinfo")
+(defpoll network :interval "5s" :initial "{}" "eww-network")
+(defpoll settings :interval "5s" :initial "{}" "eww-settings")
+
+;; Animated placeholder while data is loading.
+(defvar dots_frames "[\".\", \"..\", \"...\"]")
+
+;; Bar
+
+(defwidget workspaces []
+  (box :class "workspaces" :space-evenly false
+    (for ws in workspaces
+      (button :class "ws ${ws.focused ? 'focused' : ''} ${ws.urgent ? 'urgent' : ''}"
+              :onclick "swaymsg workspace number ${ws.num}"
+        "${ws.num}"))))
+
+(defwidget separator []
+  (label :class "separator" :text "·"))
+
+(defwidget block [name label active]
+  (button :class "block ${active ? 'active' : ''}"
+          :timeout "3s"
+          :onclick "eww-panel ${name}"
+    label))
+
+(defwidget battery []
+  (box :space-evenly false :visible {battery?.present ?: false}
+    (separator)
+    (label :class "battery ${battery?.status != 'Discharging' ? '' : battery?.capacity <= 15 ? 'critical' : battery?.capacity <= 30 ? 'warning' : ''}"
+           :text "${battery?.status == 'Discharging' ? 'bat' : 'chr'} ${battery?.capacity ?: 0}%")))
+
+(defwidget status []
+  (box :class "status" :halign "end" :space-evenly false
+    (block :name "network" :label "net" :active reveal_network)
+    (separator)
+    (block :name "info" :label "info" :active reveal_info)
+    (separator)
+    (block :name "settings" :label "set" :active reveal_settings)
+    (separator)
+    ;; Inverted for the touchpad's natural scrolling.
+    (eventbox :onscroll "[ {} = down ] && wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+ || wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
+      (button :class "block volume ${reveal_audio ? 'active' : ''}"
+              :timeout "3s"
+              :onclick "eww-panel audio"
+        "${volume.muted ? 'vol muted' : 'vol ${volume.volume}%'}"))
+    (battery)))
+
+(defwindow bar
+  :monitor 0
+  :geometry (geometry :width "100%" :height "34px" :anchor "top center")
+  :stacking "fg"
+  :exclusive true
+  :namespace "eww-bar"
+  (centerbox :class "bar"
+    (box :halign "start" :space-evenly false
+      (workspaces)
+      (label :class "title" :limit-width 60 :text window_title))
+    ;; The separator sits exactly at the center of the screen.
+    (box :space-evenly false
+      (label :class "clock-half" :xalign 1 :text {formattime(EWW_TIME, "%H:%M")})
+      (label :class "clock-separator" :text "|")
+      (label :class "clock-half" :xalign 0 :text {formattime(EWW_TIME, "%a %d %m")}))
+    (status)))
+
+;; Panels
+
+(defwidget row [key value]
+  (box :class "row" :space-evenly false
+    (label :class "key" :halign "start" :hexpand true :text key)
+    (label :class "value" :halign "end" :text value)))
+
+(defwidget section [title]
+  (box :class "section" :orientation "v" :space-evenly false
+    (label :class "section-title" :halign "start" :text title)
+    (children)))
+
+(defwidget panel [reveal]
+  (revealer :reveal reveal :transition "crossfade" :duration "150ms"
+    (box :class "panel" :orientation "v" :space-evenly false
+      (children))))
+
+(defwidget choice [label active onclick]
+  (button :class "choice ${active ? 'active' : ''}" :hexpand true :timeout "3s" :onclick onclick
+    label))
+
+(defwidget loading [value]
+  (label :class "value" :halign "end" :text {value ?: dots_frames[EWW_TIME % 3]}))
+
+(defwidget data-row [key value]
+  (box :class "row" :space-evenly false
+    (label :class "key" :halign "start" :hexpand true :text key)
+    (loading :value value)))
+
+;; Panels open under their button; eww-panel sets x.
+(defwindow network [x]
+  :monitor 0
+  :geometry (geometry :x x :y "8px" :width "320px" :anchor "top right")
+  :stacking "overlay"
+  :namespace "eww-panel"
+  (panel :reveal reveal_network
+    (data-row :key "network" :value {network?.name == "" ? "offline" : network?.name})
+    (data-row :key "type" :value {network?.kind == "" ? "-" : network?.kind})
+    (data-row :key "signal" :value {(network?.warp ?: "") == "" ? "" : network?.kind == "wifi" ? "${network?.signal}%" : "-"})
+    (data-row :key "ip" :value {network?.local_ip == "" ? "-" : network?.local_ip})
+    (data-row :key "warp" :value {network?.warp})
+    (button :class "action"
+            :timeout "15s"
+            :onclick "eww-warp-toggle"
+      {network?.warp == "connected" || network?.warp == "connecting" ? "disconnect warp"
+        : network?.warp == "not registered" ? "register and connect warp" : "connect warp"})))
+
+(defwindow info [x]
+  :monitor 0
+  :geometry (geometry :x x :y "8px" :width "320px" :anchor "top right")
+  :stacking "overlay"
+  :namespace "eww-panel"
+  (panel :reveal reveal_info
+    (row :key "cpu" :value "${round(EWW_CPU.avg, 0)}%  ${sysinfo?.cpu_temp ?: '-'}°C")
+    (box :visible {sysinfo?.gpu?.name != ""}
+      (row :key "gpu" :value "${sysinfo?.gpu?.usage ?: '-'}%${sysinfo?.gpu?.temp != '' ? '  ${sysinfo?.gpu?.temp}°C' : ''}"))
+    (row :key "ram" :value "${round(EWW_RAM.used_mem / 1073741824, 1)} / ${round(EWW_RAM.total_mem / 1073741824, 1)} GiB")
+    (row :key "disk" :value "${round(EWW_DISK['/home'].used_perc, 0)}%")
+    (box :visible {battery?.present ?: false}
+      (row :key "bat hp" :value "${battery?.health ?: '-'}%"))))
+
+(defwindow settings [x]
+  :monitor 0
+  :geometry (geometry :x x :y "8px" :width "320px" :anchor "top right")
+  :stacking "overlay"
+  :namespace "eww-panel"
+  (panel :reveal reveal_settings
+    (section :title "power"
+      (box :class "choices" :space-evenly false
+        (choice :label "auto" :active {(settings?.mode ?: "auto") == "auto"} :onclick "eww-set power auto")
+        (choice :label "perf" :active {settings?.mode == "performance"} :onclick "eww-set power performance")
+        (choice :label "bal" :active {settings?.mode == "balanced"} :onclick "eww-set power balanced")
+        (choice :label "save" :active {settings?.mode == "power-saver"} :onclick "eww-set power power-saver"))
+      (row :key "active profile" :value {settings?.profile ?: "..."}))
+    (section :title "night light"
+      (box :class "choices" :space-evenly false
+        (choice :label {settings?.night_light ?: false ? "on" : "off"}
+                :active {settings?.night_light ?: false}
+                :onclick "eww-set night-light"))
+      ;; Left is weaker, right is warmer.
+      (box :class "slider-row" :space-evenly false
+        (scale :class "slider"
+               :hexpand true
+               :min 3000
+               :max 6000
+               :flipped true
+               :value {settings?.night_temp ?: 4500}
+               :timeout "2s"
+               :onchange "eww-set night-temp {}")
+        (label :class "slider-value" :text "${night_temp_live != '' ? night_temp_live : settings?.night_temp ?: 4500}K")))
+    (section :title "notifications"
+      (box :class "choices" :space-evenly false
+        (choice :label {settings?.notifications ?: true ? "on" : "off"}
+                :active {settings?.notifications ?: true}
+                :onclick "eww-set notifications")))))
+
+;; Scroll to change the volume, click to mute.
+(defwidget level [name value muted device]
+  (eventbox :onscroll "[ {} = down ] && wpctl set-volume -l 1.0 ${device} 5%+ || wpctl set-volume ${device} 5%-"
+            :onclick "wpctl set-mute ${device} toggle"
+    (box :class "level" :orientation "v" :space-evenly false
+      (progress :class "level-bar ${muted ? 'muted' : ''}"
+                :orientation "v"
+                :flipped true
+                :halign "center"
+                :value value)
+      (label :class "level-value" :text {muted ? "muted" : "${value}%"})
+      (label :class "key" :text name))))
+
+(defwindow audio [x]
+  :monitor 0
+  :geometry (geometry :x x :y "8px" :width "200px" :anchor "top right")
+  :stacking "overlay"
+  :namespace "eww-panel"
+  (panel :reveal reveal_audio
+    (box :class "levels"
+      (level :name "out" :value {volume.volume} :muted {volume.muted} :device "@DEFAULT_AUDIO_SINK@")
+      (level :name "mic" :value {volume.mic} :muted {volume.mic_muted} :device "@DEFAULT_AUDIO_SOURCE@"))))
+
+;; Volume and brightness indicator
+
+(defwindow osd
+  :monitor 0
+  :geometry (geometry :y "80px" :width "280px" :anchor "bottom center")
+  :stacking "overlay"
+  :namespace "eww-osd"
+  (box :class "osd" :space-evenly false
+    (label :class "osd-label" :text osd_label)
+    (progress :class "osd-bar" :hexpand true :valign "center" :value osd_value)
+    (label :class "osd-value" :text "${osd_value}%")))

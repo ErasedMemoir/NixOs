@@ -1,4 +1,3 @@
-# sway/mako.nix - Minimalist, stateless notification daemon
 {
   services.mako = {
     enable = true;
@@ -12,6 +11,9 @@
       border-color = "#888888";
       border-size = 2;
       border-radius = 5;
+
+      # Toggled from the settings panel.
+      "mode=do-not-disturb".invisible = 1;
     };
   };
 }

@@ -1,11 +1,10 @@
-{ config, pkgs, ... }:
-
+# SSH client.
 {
   programs.ssh = {
     enable = true;
+
     enableDefaultConfig = false;
-    
-    # reMarkable connection configuration
+
     settings = {
       "remarkable" = {
         Hostname = "192.168.1.72";

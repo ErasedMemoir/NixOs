@@ -1,42 +1,53 @@
-# ==============================================================================
-# ENTRYPOINT: flake.nix
-# Description: Defines the core inputs and outputs for the declarative system.
-# Ensures absolute reproducibility by locking dependencies to specific commits.
-# ==============================================================================
 {
+  description = "Modular, impermanent NixOS configuration";
+
   inputs = {
-    # Core system repositories
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-    # Utilities and system structure management
-    preservation.url = "github:nix-community/preservation";
+    # Exposed as pkgs.unstable.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     import-tree.url = "github:denful/import-tree";
 
-    # User environment manager
+    preservation.url = "github:nix-community/preservation";
+
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Pre-compiled database for dynamic execution
     nix-index = {
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Declarative disk partitioning
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = inputs: {
-    nixosConfigurations.nixos = inputs.nixpkgs.lib.nixosSystem {
-      modules = [ (inputs.import-tree ./modules/nixos) ];
-      specialArgs = { inherit inputs; };
-      system = "x86_64-linux";
+  outputs =
+    inputs@{ nixpkgs, import-tree, ... }:
+    let
+      inherit (nixpkgs) lib;
+
+      # One configuration per directory in ./hosts.
+      hosts = lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./hosts));
+
+      mkHost =
+        name:
+        lib.nixosSystem {
+          specialArgs = { inherit inputs; };
+          modules = [
+            (import-tree ./modules/nixos)
+            ./hosts/${name}
+          ];
+        };
+    in
+    {
+      nixosConfigurations = lib.genAttrs hosts mkHost;
+
+      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-tree;
     };
-  };
 }

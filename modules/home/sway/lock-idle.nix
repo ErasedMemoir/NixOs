@@ -1,7 +1,9 @@
-# sway/lock-idle.nix - Screen locking and automated idle detection logic
-{ pkgs, ... }:
+# Screen locking and idle handling.
+{ config, pkgs, ... }:
+let
+  lock = "${config.programs.swaylock.package}/bin/swaylock -f";
+in
 {
-  # Cryptographic-style screen locker utilizing Wayland's ext-session-lock
   programs.swaylock = {
     enable = true;
     package = pkgs.swaylock-effects;
@@ -10,7 +12,6 @@
       font = "JetBrainsMono Nerd Font";
       indicator-radius = 100;
       indicator-thickness = 10;
-      # Generates a real-time blur array of the current viewport
       screenshots = true;
       effect-blur = "7x5";
       effect-vignette = "0.5:0.5";
@@ -34,16 +35,16 @@
     };
   };
 
-  # Idle management daemon
   services.swayidle = {
     enable = true;
     events = {
-      "before-sleep" = "${pkgs.swaylock-effects}/bin/swaylock -f";
+      before-sleep = lock;
+      lock = lock;
     };
     timeouts = [
       {
         timeout = 300;
-        command = "${pkgs.swaylock-effects}/bin/swaylock -f";
+        command = lock;
       }
       {
         timeout = 360;

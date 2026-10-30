@@ -1,18 +1,30 @@
-# sway/default.nix - Core WM logic, hardware inputs, keybindings
-{ config, lib, pkgs, ... }:
+# Sway.
 {
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+{
+  home.packages = [ pkgs.brightnessctl ];
+
   wayland.windowManager.sway = {
     enable = true;
 
-    # Ensures environment variables are exported to the systemd user session
     wrapperFeatures.gtk = true;
 
+    # greetd starts sway without a login shell.
+    extraSessionCommands = ''
+      vars="${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh"
+      if [ -f "$vars" ]; then . "$vars"; fi
+    '';
+
     config = {
-      modifier = "Mod4"; # Super/Windows key
+      modifier = "Mod4"; # Super
       terminal = "foot";
       menu = "rofi -show drun";
+      defaultWorkspace = "workspace number 1";
 
-      # Hardware input definitions
       input = {
         "type:keyboard".xkb_layout = "it";
         "type:touchpad" = {
@@ -21,16 +33,18 @@
         };
       };
 
-      # Set wallpaper
-      output = {
-        "*" = {
-          bg = "${./wallpaper.png} fill";
-        };
-      };
+      output."*".bg = "${./wallpaper.png} fill";
 
+      # The bar is drawn by eww.
       bars = [ ];
 
-      # Window Decoration Colors
+      gaps.inner = 6;
+
+      window = {
+        border = 2;
+        titlebar = false;
+      };
+
       colors = {
         focused = {
           border = "#888888";
@@ -62,28 +76,14 @@
         };
       };
 
-      # Background daemons and initial application payload
-      startup = [
-        { command = "waybar"; }
-        # Store clipboard history with a strict 10-item limit
-        { command = "wl-paste --watch cliphist store -max-items 10"; }
-      ];
-
-      # Keybindings mapping
       keybindings =
         let
-          term = config.wayland.windowManager.sway.config.terminal;
           mod = config.wayland.windowManager.sway.config.modifier;
-          menu = config.wayland.windowManager.sway.config.menu;
         in
         lib.mkOptionDefault {
-          # --- System Commands ---
-          "${mod}+Return" = "exec ${term}";
-          "${mod}+d" = "exec ${menu}";
-          "${mod}+Shift+q" = "kill";
           "${mod}+Shift+r" = "reload";
-          
-          # Minimalist Rofi Power Menu
+          "${mod}+Escape" = "exec loginctl lock-session";
+
           "${mod}+Shift+e" = "exec ${pkgs.writeShellScript "powermenu" ''
             chosen=$(echo -e "Logout\nReboot\nShutdown" | rofi -dmenu -i -theme-str 'listview {lines: 3; require-input: false;} inputbar { enabled: false; }')
             case "$chosen" in
@@ -93,23 +93,27 @@
             esac
           ''}";
 
-          # --- Application Shortcuts ---
+          # Mod+f, Mod+b and Mod+v launch applications.
+          "${mod}+Shift+f" = "fullscreen toggle";
+          "${mod}+Shift+b" = "splith";
+          "${mod}+Shift+v" = "splitv";
           "${mod}+b" = "exec firefox";
           "${mod}+c" = "exec discord";
           "${mod}+f" = "exec thunar";
 
-          # --- Hardware Control ---
-          "XF86AudioRaiseVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+";
-          "XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
-          "XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
-          "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
-          "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
+          "XF86AudioRaiseVolume" = "exec wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+ && eww-osd volume";
+          "XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- && eww-osd volume";
+          "XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle && eww-osd volume";
+          "XF86AudioMicMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle && eww-osd mic";
+          "XF86AudioPlay" = "exec playerctl play-pause";
+          "XF86AudioPause" = "exec playerctl play-pause";
+          "XF86AudioNext" = "exec playerctl next";
+          "XF86AudioPrev" = "exec playerctl previous";
+          "XF86MonBrightnessUp" = "exec brightnessctl set 5%+ && eww-osd brightness";
+          "XF86MonBrightnessDown" = "exec brightnessctl set 5%- && eww-osd brightness";
 
-          # --- Screenshot Workflow ---
-          # 1. Quick Capture: Select region -> Wayland clipboard (image/png)
+          "${mod}+v" = "exec cliphist list | rofi -dmenu -display-columns 2 | cliphist decode | wl-copy";
           "${mod}+Shift+s" = ''exec grim -g "$(slurp)" - | wl-copy -t image/png'';
-
-          # 2. Edit Capture: Select region -> Pipe to Swappy graphical editor
           "Print" = ''exec grim -g "$(slurp)" - | swappy -f -'';
         };
     };

@@ -1,4 +1,5 @@
-# home/claude.nix - Claude Code: package, private toolchain, settings, global memory
+# Claude Code: wrapped package with a private toolchain, settings, MCP/LSP
+# servers and global instructions.
 { pkgs, lib, ... }:
 let
   # Tools on Claude's PATH only (ripgrep ships with the package); anything else via `nix shell`
@@ -10,19 +11,26 @@ let
     mupdf # mutool: render single pages
     imagemagick
     pandoc
-    ocrmypdf
-    (tesseract.override { enableLanguages = [ "eng" "ita" ]; })
+    unstable.ocrmypdf
+    (tesseract.override {
+      enableLanguages = [
+        "eng"
+        "ita"
+      ];
+    })
     unstable.markitdown # pptx/docx/xlsx -> markdown
     texliveFull
     nixfmt
     nvd
-    (python3.withPackages (ps: with ps; [
-      sympy
-      numpy
-      scipy
-      matplotlib
-      pymupdf # fitz
-    ]))
+    (python3.withPackages (
+      ps: with ps; [
+        sympy
+        numpy
+        scipy
+        matplotlib
+        pymupdf # fitz
+      ]
+    ))
   ];
 
   claude-code = pkgs.symlinkJoin {
@@ -140,11 +148,11 @@ in
       - Dependencies: prefer a popular, well-maintained one over reimplementing substantial functionality, never for trivial gains. Explain why and wait for my approval before adding it.
 
       # System: NixOS
-      - Config is a flake at `/etc/nixos` (git repo, user-owned). Home Manager runs as a NixOS module; `import-tree` auto-loads every file in `modules/nixos/` and `modules/home/`. New files must be `git add`ed or the flake won't see them.
+      - Config is a flake at `/etc/nixos` (git repo, user-owned). Home Manager runs as a NixOS module; `import-tree` auto-loads every file in `modules/nixos/` and `modules/home/`; each `hosts/<name>/` adds machine-specific settings and its Facter report. New files must be `git add`ed or the flake won't see them.
       - Root is ephemeral (preservation, persisted under `/data`); `$HOME` is persistent.
       - Any missing tool is one command away: `nix shell nixpkgs#<pkg> -c <cmd>`. Never `apt`, `pip install`, `npm i -g`. Projects: use the repo's devShell (`nix develop -c <cmd>`); if none, propose a minimal `flake.nix`.
       - Look up options and packages with the `nixos` MCP instead of guessing; library APIs with `context7`.
-      - Never run `sudo` or `nixos-rebuild switch`. Validate with `nixos-rebuild build --flake /etc/nixos#nixos`, summarize with `nvd diff /run/current-system result`, then give me the switch command.
+      - Never run `sudo` or `nixos-rebuild switch`. Validate with `nixos-rebuild build --flake /etc/nixos` (selects the host by hostname), summarize with `nvd diff /run/current-system result`, then give me the switch command.
 
       # Tools
       - On PATH beyond the usual: `rga` (grep inside PDFs/docx), `markitdown`, `mutool`, `ocrmypdf`, TeX Live, `python3` with sympy/numpy/scipy/matplotlib/fitz.

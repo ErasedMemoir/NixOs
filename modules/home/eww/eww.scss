@@ -1,0 +1,215 @@
+* {
+  all: unset;
+  font-family: "JetBrainsMono Nerd Font";
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.bar {
+  background-color: #000000;
+}
+
+.ws,
+.block {
+  padding: 0 8px;
+  border-bottom: 2px solid transparent;
+}
+
+.ws:hover,
+.block:hover {
+  background-color: #333333;
+}
+
+.ws.focused,
+.block.active {
+  background-color: #333333;
+  border-bottom: 2px solid #ffffff;
+}
+
+.ws.urgent {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.title {
+  padding: 0 6px;
+  font-weight: bold;
+}
+
+.separator {
+  color: #555555;
+  padding: 0 4px;
+}
+
+/* Fixed widths keep the panels aligned under their buttons. */
+.volume {
+  min-width: 81px;
+}
+
+.battery {
+  min-width: 72px;
+  padding: 0 6px;
+}
+
+.clock-half {
+  min-width: 100px;
+}
+
+.clock-separator {
+  padding: 0 9px;
+}
+
+.battery.warning {
+  background-color: #888888;
+}
+
+.battery.critical {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.panel,
+.osd {
+  background-color: #000000;
+  border: 2px solid #888888;
+  border-radius: 8px;
+}
+
+.panel {
+  padding: 15px;
+}
+
+.panel * {
+  font-size: 13px;
+}
+
+.row {
+  padding: 2px 0;
+}
+
+.key {
+  color: #888888;
+}
+
+.action {
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid #888888;
+  border-radius: 6px;
+}
+
+.action:hover {
+  background-color: #333333;
+}
+
+.osd {
+  padding: 10px 15px;
+}
+
+.level-bar trough {
+  background-color: #333333;
+  min-width: 14px;
+  min-height: 140px;
+  border-radius: 7px;
+}
+
+.level-bar progress {
+  background-color: #ffffff;
+  min-width: 14px;
+  border-radius: 7px;
+}
+
+.level-bar.muted progress {
+  background-color: #555555;
+}
+
+.level-value {
+  margin-top: 8px;
+}
+
+.osd-label,
+.osd-value {
+  min-width: 48px;
+}
+
+.osd-value {
+  margin-left: 12px;
+}
+
+.osd-bar trough {
+  background-color: #333333;
+  min-height: 6px;
+  border-radius: 3px;
+}
+
+.osd-bar progress {
+  background-color: #ffffff;
+  min-height: 6px;
+  border-radius: 3px;
+}
+
+.section {
+  margin-bottom: 10px;
+}
+
+.section-title {
+  color: #555555;
+  margin-bottom: 4px;
+}
+
+.choices {
+  margin: 4px 0;
+}
+
+.choice {
+  padding: 4px 0;
+  transition: 150ms;
+  margin-right: 6px;
+  border: 1px solid #333333;
+  border-radius: 6px;
+}
+
+.choice:last-child {
+  margin-right: 0;
+}
+
+.choice:hover {
+  background-color: #333333;
+}
+
+.choice.active {
+  border-color: #ffffff;
+  background-color: #333333;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.slider-row {
+  margin-top: 6px;
+}
+
+.slider trough {
+  background-color: #333333;
+  min-height: 6px;
+  border-radius: 3px;
+}
+
+.slider highlight {
+  background-color: #ffffff;
+  border-radius: 3px;
+}
+
+.slider slider {
+  background-color: #ffffff;
+  min-width: 14px;
+  min-height: 14px;
+  margin: -4px 0;
+  border-radius: 7px;
+}
+
+.slider-value {
+  min-width: 56px;
+  margin-left: 10px;
+}

@@ -1,4 +1,3 @@
-# sway/rofi.nix
 { config, ... }:
 
 let
