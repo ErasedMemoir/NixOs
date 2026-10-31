@@ -1,5 +1,10 @@
 # Status bar, panels and volume/brightness indicator.
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   script =
     name: runtimeInputs:
@@ -88,6 +93,13 @@ in
     scssConfig = builtins.readFile ./eww.scss;
     systemd.enable = true;
   };
+
+  # Restart on switch when the config or a script changes.
+  systemd.user.services.eww.Unit.X-Restart-Triggers = [
+    config.xdg.configFile."eww/eww.yuck".source
+    config.xdg.configFile."eww/eww.scss".source
+    scripts
+  ];
 
   systemd.user.services.eww.Service = {
     ExecStartPost = "${pkgs.writeShellScript "eww-open-bar" ''

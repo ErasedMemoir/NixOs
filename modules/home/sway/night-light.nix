@@ -1,4 +1,5 @@
-# Warmer screen at night. The strength is set from the eww settings panel.
+# Warmer screen. The settings panel stores a strength from 0 to 99, or 100
+# to follow the sun.
 {
   config,
   lib,
@@ -7,9 +8,15 @@
 }:
 let
   start = pkgs.writeShellScript "night-light" ''
-    temp=$(cat "${config.xdg.stateHome}/night-light" 2>/dev/null || true)
-    [[ $temp =~ ^[0-9]+$ ]] || temp=4500
-    exec ${lib.getExe pkgs.wlsunset} -l 43.6 -L 13.5 -T 6500 -t "$temp"
+    wlsunset=(${lib.getExe pkgs.wlsunset} -l 43.6 -L 13.5)
+    level=$(cat "${config.xdg.stateHome}/night-light" 2>/dev/null || true)
+
+    if [[ $level =~ ^[0-9]+$ ]] && ((level < 100)); then
+      # Same temperature day and night: the high one must be higher.
+      temp=$((6500 - level * 45))
+      exec "''${wlsunset[@]}" -T $((temp + 1)) -t "$temp"
+    fi
+    exec "''${wlsunset[@]}" -T 6500 -t 2500
   '';
 in
 {

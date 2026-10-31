@@ -4,7 +4,7 @@
 (defvar reveal_audio false)
 (defvar osd_label "vol")
 (defvar osd_value 0)
-(defvar night_temp_live "")
+(defvar night_level_live "")
 
 (deflisten workspaces :initial "[]" "eww-workspaces")
 (deflisten window_title :initial "" "eww-window-title")
@@ -135,6 +135,9 @@
     (box :visible {battery?.present ?: false}
       (row :key "bat hp" :value "${battery?.health ?: '-'}%"))))
 
+(defwidget night-level [level]
+  (label :class "slider-value" :text {level >= 100 ? "auto" : "${level}%"}))
+
 (defwindow settings [x]
   :monitor 0
   :geometry (geometry :x x :y "8px" :width "320px" :anchor "top right")
@@ -153,17 +156,16 @@
         (choice :label {settings?.night_light ?: false ? "on" : "off"}
                 :active {settings?.night_light ?: false}
                 :onclick "eww-set night-light"))
-      ;; Left is weaker, right is warmer.
+      ;; Right is stronger; all the way right follows the sun.
       (box :class "slider-row" :space-evenly false
         (scale :class "slider"
                :hexpand true
-               :min 3000
-               :max 6000
-               :flipped true
-               :value {settings?.night_temp ?: 4500}
+               :min 0
+               :max 100
+               :value {settings?.night_level ?: 100}
                :timeout "2s"
-               :onchange "eww-set night-temp {}")
-        (label :class "slider-value" :text "${night_temp_live != '' ? night_temp_live : settings?.night_temp ?: 4500}K")))
+               :onchange "eww-set night-level {}")
+        (night-level :level {night_level_live != "" ? night_level_live : settings?.night_level ?: 100})))
     (section :title "notifications"
       (box :class "choices" :space-evenly false
         (choice :label {settings?.notifications ?: true ? "on" : "off"}

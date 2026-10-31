@@ -22,9 +22,9 @@ case $1 in
       systemctl --user start night-light.service
     fi
     ;;
-  night-temp)
-    [[ $2 =~ ^[0-9]+$ ]] && ((3000 <= $2 && $2 <= 6000)) || exit 1
-    timeout 2 eww update "night_temp_live=$2"
+  night-level)
+    [[ $2 =~ ^[0-9]+$ ]] && (($2 <= 100)) || exit 1
+    timeout 2 eww update "night_level_live=$2"
     state=${XDG_STATE_HOME:-$HOME/.local/state}
     mkdir -p "$state"
     echo "$2" >"$state/night-light"
